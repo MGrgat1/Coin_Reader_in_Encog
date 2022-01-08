@@ -50,8 +50,16 @@ import javax.imageio.ImageIO;
 
 public class ImageNeuralNetwork {
 
-	private final Map<String, String> args = new HashMap<String, String>();
+	private Map<String, String> args;
 	private String line;
+
+	public void setLine(String line) {
+		this.line = line;
+	}
+
+	public void setArgs(Map<String, String> args) {
+		this.args = args;
+	}
 
 	class TrainingPair {
 		private final File file;
@@ -73,10 +81,9 @@ public class ImageNeuralNetwork {
 
 		@Override
 		public String toString() {
-			return "TrainingPair{" +
-					"file=" + file +
+			return "(file=" + file +
 					", outputNeuronValue=" + outputNeuronValue +
-					'}';
+					')';
 		}
 	}
 
@@ -94,13 +101,15 @@ public class ImageNeuralNetwork {
 
 	private Downsample downsample;
 
-	public String getArg(final String name) {
-		final String result = this.args.get(name);
-		if (result == null) {
+	public String fetchArg(final String name) {
+		System.out.println("[INFO] Fetching argument");
+		final String fetchedArgument = this.args.get(name);
+		System.out.println("[INFO] Result: " + fetchedArgument);
+		if (fetchedArgument == null) {
 			throw new EncogError("Missing argument " + name + " on line: "
 					+ this.line);
 		}
-		return result;
+		return fetchedArgument;
 	}
 
 	/**
@@ -130,11 +139,15 @@ public class ImageNeuralNetwork {
 		return result;
 	}
 
-
+	/**
+	 *
+	 */
 	public void processCreateTraining() {
-		final String strWidth = getArg("width");
-		final String strHeight = getArg("height");
-		final String strType = getArg("type");
+		System.out.println("[INFO] Entered create training");
+		System.out.println("[INFO] Fetching width, height and type");
+		final String strWidth = fetchArg("width");
+		final String strHeight = fetchArg("height");
+		final String strType = fetchArg("type");
 
 		this.downsampleHeight = Integer.parseInt(strHeight);
 		this.downsampleWidth = Integer.parseInt(strWidth);
@@ -145,8 +158,10 @@ public class ImageNeuralNetwork {
 			this.downsample = new SimpleIntensityDownsample();
 		}
 
+		//applying processes to the input - downsampling, finding bounds, min-max encoding
+		System.out.println("[INFO] Creating the training set (downsampling, finding bounds, min-max encoding)");
 		this.training = new ImageMLDataSet(this.downsample, false, 1, -1);
-		System.out.println("Training set created");
+		System.out.println("[INFO] Training set created");
 	}
 
 	/**
@@ -155,8 +170,8 @@ public class ImageNeuralNetwork {
 	 * @throws IOException
 	 */
 	public void processInput() throws IOException {
-		final String image = getArg("image");
-		final String identity = getArg("identity");
+		final String image = fetchArg("image");
+		final String identity = fetchArg("identity");
 
 		final int outputNeuronValue = assignOutputNeuron(identity);
 		final File file = new File(image);
@@ -192,14 +207,15 @@ public class ImageNeuralNetwork {
 				}
 			}
 
-			System.out.println("[INFO] Reading the image from the image file");
+			System.out.println("[INFO] Reading the input image from the training pair");
+			System.out.println("Training pair: " + pair);
 			final Image img = ImageIO.read(pair.getFile());
 			final ImageMLData data = new ImageMLData(img);
 			this.training.add(data, expectedOutput);
 		}
 
-		final String strHidden1 = getArg("hidden1");
-		final String strHidden2 = getArg("hidden2");
+		final String strHidden1 = fetchArg("hidden1");
+		final String strHidden2 = fetchArg("hidden2");
 
 		System.out.println("[INFO] Downsampling images...");
 
@@ -214,21 +230,37 @@ public class ImageNeuralNetwork {
 		System.out.println("[INFO] Created network: " + this.network.toString());
 	}
 
+	/**
+	 * Training the network.
+	 * @throws IOException
+	 */
 	public void processTrain() throws IOException {
-		final String strMode = getArg("mode");
-		final String strMinutes = getArg("minutes");
-		final String strStrategyError = getArg("strategyerror");
-		final String strStrategyCycles = getArg("strategycycles");
 
-		System.out.println("Training Beginning... Output patterns="
+		System.out.println("[INFO] Starting training. Fetching arguments.");
+		final String strMode = fetchArg("mode");
+		final String strMinutes = fetchArg("minutes");
+		final String strStrategyError = fetchArg("strategyerror");
+		final String strStrategyCycles = fetchArg("strategycycles");
+
+		System.out.println("[INFO] Arguments fetched.");
+		System.out.println("mode: " + strMode);
+		System.out.println("minutes: " + strMinutes);
+		System.out.println("strategy error: " + strStrategyError);
+		System.out.println("strategy cycles: " + strStrategyCycles);
+
+		System.out.println("[INFO] Output patterns="
 				+ this.outputCount);
 
 		final double strategyError = Double.parseDouble(strStrategyError);
 		final int strategyCycles = Integer.parseInt(strStrategyCycles);
 
+		System.out.println("[INFO] Defining a training strategy");
 		final ResilientPropagation train = new ResilientPropagation(this.network, this.training);
 		train.addStrategy(new ResetStrategy(strategyError, strategyCycles));
 
+		System.out.println("[INFO] Strategy added");
+
+		//if the application is run using a gui, it's trained using a dialog. If it's not using a gui, it's trained using a console
 		if (strMode.equalsIgnoreCase("gui")) {
 			TrainingDialog.trainDialog(train, this.network, this.training);
 		} else {
@@ -239,11 +271,16 @@ public class ImageNeuralNetwork {
 		System.out.println("Training Stopped...");
 	}
 
-	public void processWhatIs() throws IOException {
-		final String filename = getArg("image");
+	/**
+	 *
+	 * @throws IOException
+	 */
+	public void processRecognition() throws IOException {
+		System.out.println("Starting the process of recognition");
+		final String filename = fetchArg("image");
 		final File file = new File(filename);
-		final Image img = ImageIO.read(file);
-		final ImageMLData input = new ImageMLData(img);
+		final Image image = ImageIO.read(file);
+		final ImageMLData input = new ImageMLData(image);
 		input.downsample(this.downsample, false, this.downsampleHeight,
 				this.downsampleWidth, 1, -1);
 		final int winner = this.network.winner(input);

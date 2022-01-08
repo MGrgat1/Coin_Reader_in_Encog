@@ -1,12 +1,15 @@
- * CreateTraining: width:16,height:16,type:RGB
- * Input: image:./coins/dime.png, identity:dime
- * Input: image:./coins/dollar.png, identity:dollar
- * Input: image:./coins/half.png, identity:half dollar
- * Input: image:./coins/nickle.png, identity:nickle
- * Input: image:./coins/penny.png, identity:penny
- * Input: image:./coins/quarter.png, identity:quarter
- * Network: hidden1:100, hidden2:0
- * Train: Mode:console, Minutes:1, StrategyError:0.25, StrategyCycles:50
- * Whatis: image:./coins/dime.png
- * Whatis: image:./coins/half.png
- * Whatis: image:./coins/testcoin.png
+CreateTraining: width:16,height:16,type:RGB
+Input: image:src/main/coins/1kuna.jpg, identity:kuna
+Input: image:src/main/coins/1lipa.jpg, identity:lipa
+Input: image:src/main/coins/2kune.jpg, identity:kuna
+Input: image:src/main/coins/2lipe.jpg, identity:lipa
+Input: image:src/main/coins/5kuna.jpg, identity:kuna
+Input: image:src/main/coins/5lipa.jpg, identity:lipa
+Input: image:src/main/coins/10lipa.jpg, identity:lipa
+Input: image:src/main/coins/20lipa.jpg, identity:lipa
+Input: image:src/main/coins/50lipa.jpg, identity:lipa
+Network: hidden1:100, hidden2:0
+Train: Mode:console, Minutes:1, StrategyError:0.25, StrategyCycles:50
+Whatis: image:src/main/coins/10lipa.jpg
+Whatis: image:src/main/coins/5kuna.jpg
+Whatis: image:src/main/coins/1kuna.jpg

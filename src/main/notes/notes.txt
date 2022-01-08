@@ -1,0 +1,58 @@
+1) Changed the input file
+The script processor didn't execute any commands because the commands were "* input" instead of "input"
+
+2)Error:
+org.encog.EncogError: Missing argument width on line: null
+
+Possible solutions:
+args is null in the neural network. The neural network needs to be given args from the script processor.
+
+Added setLine and setArgs to the neural networks. Script processor will give the line and the args to the network
+before it calls up a process in executeCommand
+
+Error fixed
+
+3)Error:
+javax.imageio.IIOException: Can't read input file!
+
+When reading the image from the training pair: (file=.\coins\dime.png, outputNeuronValue=0)
+
+Possible solutions:
+The input files have wrong names. It should be file=.\coins\2kune.jpg
+
+Current input and output pairs in the training files:
+Input: image:./coins/dime.png, identity:dime
+Input: image:./coins/dollar.png, identity:dollar
+Input: image:./coins/half.png, identity:half dollar
+Input: image:./coins/nickle.png, identity:nickle
+Input: image:./coins/penny.png, identity:penny
+Input: image:./coins/quarter.png, identity:quarter
+
+These needs to be changed to something like:
+Input: image:./coins/1kuna.jpg, identity:kuna
+Input: image:./coins/1lipa.jpg, identity:lipa
+Input: image:./coins/2kune.jpg, identity:kuna
+Input: image:./coins/2lipe.jpg, identity:lipa
+Input: image:./coins/5kune.jpg, identity:kuna
+Input: image:./coins/5lipa.jpg, identity:lipa
+Input: image:./coins/10lipa.jpg, identity:lipa
+Input: image:./coins/20lipa.jpg, identity:lipa
+Input: image:./coins/50lipa.jpg, identity:lipa
+
+Error fixed!
+This is how the input file looks now:
+CreateTraining: width:16,height:16,type:RGB
+Input: image:src/main/coins/1kuna.jpg, identity:kuna
+Input: image:src/main/coins/1lipa.jpg, identity:lipa
+Input: image:src/main/coins/2kune.jpg, identity:kuna
+Input: image:src/main/coins/2lipe.jpg, identity:lipa
+Input: image:src/main/coins/5kuna.jpg, identity:kuna
+Input: image:src/main/coins/5lipa.jpg, identity:lipa
+Input: image:src/main/coins/10lipa.jpg, identity:lipa
+Input: image:src/main/coins/20lipa.jpg, identity:lipa
+Input: image:src/main/coins/50lipa.jpg, identity:lipa
+Network: hidden1:100, hidden2:0
+Train: Mode:console, Minutes:1, StrategyError:0.25, StrategyCycles:50
+Whatis: image:src/main/coins/10lipa.jpg
+Whatis: image:src/main/coins/5kuna.jpg
+Whatis: image:src/main/coins/1kuna.jpg

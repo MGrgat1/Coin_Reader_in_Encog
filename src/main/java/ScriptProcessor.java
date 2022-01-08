@@ -40,18 +40,18 @@ public class ScriptProcessor {
      */
     public void execute(final String file) throws IOException {
         System.out.println("[INFO] Entered program execution");
-        final FileInputStream fstream = new FileInputStream(file);
-        final DataInputStream in = new DataInputStream(fstream);
-        final BufferedReader br = new BufferedReader(new InputStreamReader(in));
+        final FileInputStream fileInputStream = new FileInputStream(file);
+        final DataInputStream dataInputStream = new DataInputStream(fileInputStream);
+        final BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(dataInputStream));
 
         System.out.println("[INFO] Entering line readings");
-        while ((this.line = br.readLine()) != null) {
+        while ((this.line = bufferedReader.readLine()) != null) {
             System.out.println("[INFO] Successfully read line:");
             System.out.println(this.line);
             System.out.println("[INFO] Entering line execution");
             executeLine();
         }
-        in.close();
+        dataInputStream.close();
     }
 
     /**
@@ -64,16 +64,29 @@ public class ScriptProcessor {
      */
     public void executeCommand(final String command,
                                 final Map<String, String> args) throws IOException {
+        System.out.println("[INFO] Entered command execution");
+        System.out.println("command: " + command);
+        System.out.println("args map: " + args);
+
+        imageNeuralNetwork.setLine(line);
+        imageNeuralNetwork.setArgs(args);
+
+
         if (command.equals("input")) {
+            System.out.println("[INFO] Entering the process of input");
             imageNeuralNetwork.processInput();
         } else if (command.equals("createtraining")) {
+            System.out.println("[INFO] Entering the process of training creation");
             imageNeuralNetwork.processCreateTraining();
         } else if (command.equals("train")) {
+            System.out.println("[INFO] Entering the process of training");
             imageNeuralNetwork.processTrain();
         } else if (command.equals("network")) {
+            System.out.println("[INFO] Entering the process of network creation");
             imageNeuralNetwork.processCreateNetwork();
         } else if (command.equals("whatis")) {
-            imageNeuralNetwork.processWhatIs();
+            System.out.println("[INFO] Entering process of recognition");
+            imageNeuralNetwork.processRecognition();
         }
 
     }
