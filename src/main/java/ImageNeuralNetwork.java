@@ -53,27 +53,35 @@ public class ImageNeuralNetwork {
 	private final Map<String, String> args = new HashMap<String, String>();
 	private String line;
 
-	class ImagePair {
+	class TrainingPair {
 		private final File file;
-		private final int identity;
+		private final int outputNeuronValue;
 
-		public ImagePair(final File file, final int identity) {
+		public TrainingPair(final File file, final int outputNeuronValue) {
 			super();
 			this.file = file;
-			this.identity = identity;
+			this.outputNeuronValue = outputNeuronValue;
 		}
 
 		public File getFile() {
 			return this.file;
 		}
 
-		public int getIdentity() {
-			return this.identity;
+		public int getOutputNeuronValue() {
+			return this.outputNeuronValue;
+		}
+
+		@Override
+		public String toString() {
+			return "TrainingPair{" +
+					"file=" + file +
+					", outputNeuronValue=" + outputNeuronValue +
+					'}';
 		}
 	}
 
 
-	private final List<ImagePair> imageList = new ArrayList<ImagePair>();
+	private final List<TrainingPair> imageList = new ArrayList<TrainingPair>();
 
 	private final Map<String, Integer> identityToNeuronMap = new HashMap<String, Integer>();
 	private final Map<Integer, String> neuronToIdentityMap = new HashMap<Integer, String>();
@@ -96,16 +104,24 @@ public class ImageNeuralNetwork {
 	}
 
 	/**
-	 * Maps the identity string into the expected output neuron.
+	 * Associates each input (dollar, dime, cent, etc.) with a possible output neuron
 	 * For example: the identity "dollar" needs to be mapped to an output neuron.
-	 * @param identity
-	 * @return
+	 * @param identity the objects that the network needs to recognize ('dollar', 'dime', 'cent')
+	 * @return the integer value that output neurons will have when they recognize that object
 	 */
-	private int assignIdentity(final String identity) {
+	private int assignOutputNeuron(final String identity) {
 
+		//if we had already assigned an output neuron to this value, give it that value again
 		if (this.identityToNeuronMap.containsKey(identity.toLowerCase())) {
 			return this.identityToNeuronMap.get(identity.toLowerCase());
 		}
+
+		/*
+		 * If this is the first time we have a dollar as an input, assign it a new output neuron.
+		 * For example, if we have inputs 'dollar', 'dime', 'cent', their output neurons will be '0', '1', '2'.
+		 * And from then on, whenever the network outputs a '2', it will mean that it recognized a cent
+		 * (either correctly or incorrectly).
+		 */
 
 		final int result = this.outputCount;
 		this.identityToNeuronMap.put(identity.toLowerCase(), result);
@@ -134,43 +150,58 @@ public class ImageNeuralNetwork {
 	}
 
 	/**
-	 * This is executed when the command is "input"
-	 * Example: "Input: image:./coins/dollar.png, identity:dollar"
+	 * Assign an output value for every possible input file
+	 * For example: ("./coins/dollar.png", 0) - 0 means that the network has recognized a dollar
 	 * @throws IOException
 	 */
 	public void processInput() throws IOException {
 		final String image = getArg("image");
 		final String identity = getArg("identity");
 
-		final int idx = assignIdentity(identity);
+		final int outputNeuronValue = assignOutputNeuron(identity);
 		final File file = new File(image);
 
-		this.imageList.add(new ImagePair(file, idx));
+		TrainingPair trainingPair = new TrainingPair(file, outputNeuronValue);
 
-		System.out.println("Added input image:" + image);
+		this.imageList.add(trainingPair);
+
+		System.out.println("[INFO] Added a new training pair: " + trainingPair);
 	}
 
-	public void processNetwork() throws IOException {
-		System.out.println("Downsampling images...");
+	/**
+	 * Creates the expected output, reads the image from the image file, creates the hidden layers,
+	 * downsamples the images, and performs the feedforward algorithm.
+	 * @throws IOException
+	 */
+	public void processCreateNetwork() throws IOException {
 
-		for (final ImagePair pair : this.imageList) {
-			final MLData ideal = new BasicMLData(this.outputCount);
-			final int idx = pair.getIdentity();
+		System.out.println("[INFO] Creating expected output");
+		for (final TrainingPair pair : this.imageList) {
+			final MLData expectedOutput = new BasicMLData(this.outputCount);
+			final int outputNeuronValue = pair.getOutputNeuronValue();
+
+			/**
+			 * All outputs of the neural network will have 1 in one place, and -1 everywhere else. The network's guess
+			 * will be encoded by the position of that value.
+			 */
 			for (int i = 0; i < this.outputCount; i++) {
-				if (i == idx) {
-					ideal.setData(i, 1);
+				if (i == outputNeuronValue) {
+					expectedOutput.setData(i, 1);
 				} else {
-					ideal.setData(i, -1);
+					expectedOutput.setData(i, -1);
 				}
 			}
 
+			System.out.println("[INFO] Reading the image from the image file");
 			final Image img = ImageIO.read(pair.getFile());
 			final ImageMLData data = new ImageMLData(img);
-			this.training.add(data, ideal);
+			this.training.add(data, expectedOutput);
 		}
 
 		final String strHidden1 = getArg("hidden1");
 		final String strHidden2 = getArg("hidden2");
+
+		System.out.println("[INFO] Downsampling images...");
 
 		this.training.downsample(this.downsampleHeight, this.downsampleWidth);
 
@@ -180,7 +211,7 @@ public class ImageNeuralNetwork {
 		this.network = EncogUtility.simpleFeedForward(this.training
 				.getInputSize(), hidden1, hidden2,
 				this.training.getIdealSize(), true);
-		System.out.println("Created network: " + this.network.toString());
+		System.out.println("[INFO] Created network: " + this.network.toString());
 	}
 
 	public void processTrain() throws IOException {

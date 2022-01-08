@@ -71,7 +71,7 @@ public class ScriptProcessor {
         } else if (command.equals("train")) {
             imageNeuralNetwork.processTrain();
         } else if (command.equals("network")) {
-            imageNeuralNetwork.processNetwork();
+            imageNeuralNetwork.processCreateNetwork();
         } else if (command.equals("whatis")) {
             imageNeuralNetwork.processWhatIs();
         }
