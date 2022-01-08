@@ -22,7 +22,6 @@
  * http://www.heatonresearch.com/copyright
  */
 
-import org.encog.Encog;
 import org.encog.EncogError;
 import org.encog.ml.data.MLData;
 import org.encog.ml.data.basic.BasicMLData;
@@ -38,39 +37,21 @@ import org.encog.util.downsample.SimpleIntensityDownsample;
 import org.encog.util.simple.EncogUtility;
 
 import java.awt.Image;
-import java.io.BufferedReader;
-import java.io.DataInputStream;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.StringTokenizer;
 
 import javax.imageio.ImageIO;
 
 
-/**
- * Should have an input file similar to:
- * 
- * CreateTraining: width:16,height:16,type:RGB 
- * Input: image:./coins/dime.png, identity:dime 
- * Input: image:./coins/dollar.png, identity:dollar 
- * Input: image:./coins/half.png, identity:half dollar 
- * Input: image:./coins/nickle.png, identity:nickle 
- * Input: image:./coins/penny.png, identity:penny 
- * Input: image:./coins/quarter.png, identity:quarter 
- * Network: hidden1:100, hidden2:0
- * Train: Mode:console, Minutes:1, StrategyError:0.25, StrategyCycles:50 
- * Whatis: image:./coins/dime.png 
- * Whatis: image:./coins/half.png 
- * Whatis: image:./coins/testcoin.png
- * 
- */
+
 public class ImageNeuralNetwork {
+
+	private final Map<String, String> args = new HashMap<String, String>();
+	private String line;
 
 	class ImagePair {
 		private final File file;
@@ -91,31 +72,13 @@ public class ImageNeuralNetwork {
 		}
 	}
 
-	public static void main(final String[] args) {
-		if (args.length < 1) {
-			System.out
-					.println("Must specify command file.  See source for format.");
-		} else {
-			System.out.println("[INFO] Accepted arguments");
-			try {
-				final ImageNeuralNetwork program = new ImageNeuralNetwork();
-				System.out.println("[INFO] Created image neural network");
-				System.out.println("[INFO] Entering program execution");
-				program.execute(args[0]);
-			} catch (final Exception e) {
-				e.printStackTrace();
-			}
-		}
-		
-		Encog.getInstance().shutdown();
-	}
 
 	private final List<ImagePair> imageList = new ArrayList<ImagePair>();
-	private final Map<String, String> args = new HashMap<String, String>();
-	private final Map<String, Integer> identity2neuron = new HashMap<String, Integer>();
-	private final Map<Integer, String> neuron2identity = new HashMap<Integer, String>();
+
+	private final Map<String, Integer> identityToNeuronMap = new HashMap<String, Integer>();
+	private final Map<Integer, String> neuronToIdentityMap = new HashMap<Integer, String>();
 	private ImageMLDataSet training;
-	private String line;
+
 	private int outputCount;
 	private int downsampleWidth;
 	private int downsampleHeight;
@@ -123,134 +86,7 @@ public class ImageNeuralNetwork {
 
 	private Downsample downsample;
 
-	private int assignIdentity(final String identity) {
-
-		if (this.identity2neuron.containsKey(identity.toLowerCase())) {
-			return this.identity2neuron.get(identity.toLowerCase());
-		}
-
-		final int result = this.outputCount;
-		this.identity2neuron.put(identity.toLowerCase(), result);
-		this.neuron2identity.put(result, identity.toLowerCase());
-		this.outputCount++;
-		return result;
-	}
-
-	/**
-	 * Executes the commands stored in an input file (Example file: src/main/coins/input_file.txt)
-	 * @param file
-	 * @throws IOException
-	 */
-	public void execute(final String file) throws IOException {
-		System.out.println("[INFO] Entered program execution");
-		final FileInputStream fstream = new FileInputStream(file);
-		final DataInputStream in = new DataInputStream(fstream);
-		final BufferedReader br = new BufferedReader(new InputStreamReader(in));
-
-		System.out.println("[INFO] Entering line readings");
-		while ((this.line = br.readLine()) != null) {
-			System.out.println("[INFO] Successfully read line:");
-			System.out.println(this.line);
-			System.out.println("[INFO] Entering line execution");
-			executeLine();
-		}
-		in.close();
-	}
-
-	/**
-	 * Execute a command based on the name of the command, and the arguments given to it in the input file.
-	 * Example:
-	 * command - "Input",
-	 * args - ("image", "./coins/dime.png"), ("identity", "dime")
-	 *
-	 * @throws IOException
-	 */
-	private void executeCommand(final String command,
-			final Map<String, String> args) throws IOException {
-		if (command.equals("input")) {
-			processInput();
-		} else if (command.equals("createtraining")) {
-			processCreateTraining();
-		} else if (command.equals("train")) {
-			processTrain();
-		} else if (command.equals("network")) {
-			processNetwork();
-		} else if (command.equals("whatis")) {
-			processWhatIs();
-		}
-
-	}
-
-	/**
-	 * Executes a line read from the input file.
-	 *
-	 * Example lines:
-	 * CreateTraining: width:16,height:16,type:RGB
-	 * Input: image:./coins/dime.png, identity:dime
-	 * Input: image:./coins/dollar.png, identity:dollar
-	 * Input: image:./coins/half.png, identity:half dollar
-	 * Input: image:./coins/nickle.png, identity:nickle
-	 * Input: image:./coins/penny.png, identity:penny
-	 * Input: image:./coins/quarter.png, identity:quarter
-	 * Network: hidden1:100, hidden2:0
-	 * Train: Mode:console, Minutes:1, StrategyError:0.25, StrategyCycles:50
-	 * Whatis: image:./coins/dime.png
-	 * Whatis: image:./coins/half.png
-	 * Whatis: image:./coins/testcoin.png
-	 *
-	 * These lines are all read and executed one after another.
-	 *
-	 * @throws IOException
-	 */
-	public void executeLine() throws IOException {
-		//if the line doesn't contain a phrase with a ':' char (a phrase like "Input:"), the line is not a proper command
-		final int index = this.line.indexOf(':');
-		if (index == -1) {
-			throw new EncogError("Invalid command: " + this.line);
-		}
-
-		// Separate the line into a command and its arguments
-		// Example: "Input: image:./coins/penny.png, identity:penny" is separated into
-		// command - "Input"
-		// argsStr - "image:./coins/penny.png, identity:penny"
-		final String command = this.line.substring(0, index).toLowerCase()
-				.trim();
-		final String argsStr = this.line.substring(index + 1).trim();
-
-		// Split the arguments into tokens that represent the arguments
-		// Example: "image:./coins/dime.png, identity:dime" is tokenized into ("image:./coins/dime.png", "identity:dime")
-		final StringTokenizer tok = new StringTokenizer(argsStr, ",");
-		this.args.clear();
-		while (tok.hasMoreTokens()) {
-
-			// Example: "image:./coins/dime.png"
-			final String arg = tok.nextToken();
-
-			// if the argument doesn't contain the ':' char, then it's not a valid argument
-			final int index2 = arg.indexOf(':');
-			if (index2 == -1) {
-				throw new EncogError("Invalid command: " + this.line);
-			}
-
-			// Separate the argument into a key and its value
-			// Example: "image:./coins/penny.png" is separated into
-			// key - "image"
-			// value - "./coins/penny.png"
-			final String key = arg.substring(0, index2).toLowerCase().trim();
-			final String value = arg.substring(index2 + 1).trim();
-
-			//all the key-value pairs from the command will be placed into args and used to execute the command
-			this.args.put(key, value);
-		}
-
-		// the command will be executed based on the name of the command and the arguments that followed its name
-		// Example:
-		// command - "Input",
-		// args - ("image", "./coins/dime.png"), ("identity", "dime")
-		executeCommand(command, this.args);
-	}
-
-	private String getArg(final String name) {
+	public String getArg(final String name) {
 		final String result = this.args.get(name);
 		if (result == null) {
 			throw new EncogError("Missing argument " + name + " on line: "
@@ -259,7 +95,27 @@ public class ImageNeuralNetwork {
 		return result;
 	}
 
-	private void processCreateTraining() {
+	/**
+	 * Maps the identity string into the expected output neuron.
+	 * For example: the identity "dollar" needs to be mapped to an output neuron.
+	 * @param identity
+	 * @return
+	 */
+	private int assignIdentity(final String identity) {
+
+		if (this.identityToNeuronMap.containsKey(identity.toLowerCase())) {
+			return this.identityToNeuronMap.get(identity.toLowerCase());
+		}
+
+		final int result = this.outputCount;
+		this.identityToNeuronMap.put(identity.toLowerCase(), result);
+		this.neuronToIdentityMap.put(result, identity.toLowerCase());
+		this.outputCount++;
+		return result;
+	}
+
+
+	public void processCreateTraining() {
 		final String strWidth = getArg("width");
 		final String strHeight = getArg("height");
 		final String strType = getArg("type");
@@ -277,7 +133,12 @@ public class ImageNeuralNetwork {
 		System.out.println("Training set created");
 	}
 
-	private void processInput() throws IOException {
+	/**
+	 * This is executed when the command is "input"
+	 * Example: "Input: image:./coins/dollar.png, identity:dollar"
+	 * @throws IOException
+	 */
+	public void processInput() throws IOException {
 		final String image = getArg("image");
 		final String identity = getArg("identity");
 
@@ -289,7 +150,7 @@ public class ImageNeuralNetwork {
 		System.out.println("Added input image:" + image);
 	}
 
-	private void processNetwork() throws IOException {
+	public void processNetwork() throws IOException {
 		System.out.println("Downsampling images...");
 
 		for (final ImagePair pair : this.imageList) {
@@ -322,7 +183,7 @@ public class ImageNeuralNetwork {
 		System.out.println("Created network: " + this.network.toString());
 	}
 
-	private void processTrain() throws IOException {
+	public void processTrain() throws IOException {
 		final String strMode = getArg("mode");
 		final String strMinutes = getArg("minutes");
 		final String strStrategyError = getArg("strategyerror");
@@ -356,6 +217,6 @@ public class ImageNeuralNetwork {
 				this.downsampleWidth, 1, -1);
 		final int winner = this.network.winner(input);
 		System.out.println("What is: " + filename + ", it seems to be: "
-				+ this.neuron2identity.get(winner));
+				+ this.neuronToIdentityMap.get(winner));
 	}
 }
