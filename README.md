@@ -1,7 +1,7 @@
 # Coin_Reader_in_Encog
-Recognizing the digits represented on images of coins using Java Encog
+Recognizing the digits represented on images of coins.
 
-How to run the application:
+Application written in Java 16 using the Encog library.
 
-Run configuration: java 16
-argument: src/main/coins/input_file.txt
+The application executes commands from a script specified in a command file.
+Location of the command file: src/main/coins/input_file.txt
